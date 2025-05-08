@@ -1,82 +1,67 @@
 from flask import Flask, jsonify
-import requests
-import datetime
+from datetime import datetime
 
 app = Flask(__name__)
 
-# API headers
-headers = {
-    "X-RapidAPI-Key": "33a9b48d6fmsh163314ef6d9f9bcp1636f0jsnfd42903275f2",
-    "X-RapidAPI-Host": "api-football-v1.p.rapidapi.com"
-}
+# Home route
+@app.route("/")
+def home():
+    return jsonify({"message": "Welcome to the Football Prediction API"})
 
-# Confidence calculation based on odds
-def calculate_confidence(odd):
-    if odd < 1.3:
-        return 90
-    elif odd < 1.4:
-        return 80
-    elif odd < 1.5:
-        return 70
-    else:
-        return 0
-
-@app.route('/predictions', methods=['GET'])
-def get_predictions():
-    today = datetime.datetime.now().strftime('%Y-%m-%d')
-    fixtures_url = "https://api-football-v1.p.rapidapi.com/v3/fixtures"
-    params = {"date": today}
-    fixtures_response = requests.get(fixtures_url, headers=headers, params=params)
-    fixtures = fixtures_response.json().get("response", [])
-
-    predictions = []
-
-    for match in fixtures:
-        fixture_id = match["fixture"]["id"]
-        home_team = match["teams"]["home"]["name"]
-        away_team = match["teams"]["away"]["name"]
-
-        odds_url = "https://api-football-v1.p.rapidapi.com/v3/odds"
-        odds_params = {
-            "fixture": fixture_id,
-            "bookmaker": "6"  # Bet365
+# Predictions route
+@app.route("/predictions")
+def predictions():
+    today = datetime.today().strftime('%Y-%m-%d')
+    
+    # High confidence predictions
+    predictions = [
+        {
+            "match": "St. Louis City vs Union Omaha",
+            "prediction": "St. Louis City to WIN",
+            "confidence": "90%",
+            "odds": 1.28
+        },
+        {
+            "match": "FC Dallas vs Alta",
+            "prediction": "FC Dallas to WIN",
+            "confidence": "90%",
+            "odds": 1.12
+        },
+        {
+            "match": "LD Alajuelense vs Municipal Liberia",
+            "prediction": "LD Alajuelense to WIN",
+            "confidence": "90%",
+            "odds": 1.29
+        },
+        {
+            "match": "Chelsea vs Djurgardens IF",
+            "prediction": "Chelsea to WIN",
+            "confidence": "90%",
+            "odds": 1.14
+        },
+        {
+            "match": "Tractor Sazi vs Nassaji Mazandaran",
+            "prediction": "Tractor Sazi to WIN",
+            "confidence": "90%",
+            "odds": 1.28
+        },
+        {
+            "match": "FAR Rabat vs Moghreb Tetouan",
+            "prediction": "FAR Rabat to WIN",
+            "confidence": "80%",
+            "odds": 1.39
         }
-        odds_response = requests.get(odds_url, headers=headers, params=odds_params)
-        odds_data = odds_response.json().get("response", [])
+        # Add or update more predictions here
+    ]
 
-        if not odds_data:
-            continue
+    # Filter to show only 70% and above confidence
+    filtered_predictions = [p for p in predictions if int(p["confidence"].replace("%", "")) >= 70]
 
-        try:
-            bets = odds_data[0]["bookmakers"][0]["bets"]
-            for bet in bets:
-                if bet["name"] == "Match Winner":
-                    odds_dict = {item["value"]: float(item["odd"]) for item in bet["values"]}
+    return jsonify({
+        "status": "success",
+        "date": today,
+        "predictions": filtered_predictions
+    })
 
-                    if "Home" in odds_dict:
-                        conf = calculate_confidence(odds_dict["Home"])
-                        if conf >= 70:
-                            predictions.append({
-                                "match": f"{home_team} vs {away_team}",
-                                "prediction": f"{home_team} to WIN",
-                                "confidence": conf,
-                                "odds": odds_dict["Home"]
-                            })
-                            break
-                    if "Away" in odds_dict:
-                        conf = calculate_confidence(odds_dict["Away"])
-                        if conf >= 70:
-                            predictions.append({
-                                "match": f"{home_team} vs {away_team}",
-                                "prediction": f"{away_team} to WIN",
-                                "confidence": conf,
-                                "odds": odds_dict["Away"]
-                            })
-                            break
-        except Exception:
-            continue
-
-    return jsonify(predictions)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
